@@ -1,0 +1,86 @@
+# 把这个文件复制为 config/strategy-registry.yaml 后再使用。
+# 这里的内容只是样例，不代表可直接上生产。
+
+defaults:
+  operator_mode: manual_confirm
+  allowed_timeframes:
+    - 15m
+    - 1H
+    - 4H
+  allow_ai_strategy_activation: false
+  require_pretrade_revalidation: true
+
+strategies:
+  - id: btc_1h_trend_pullback_v1
+    version: 1
+    name: BTC 1H 趋势回踩
+    status: draft
+    execution_mode: manual_confirm
+    produced_by:
+      type: ai_draft
+      source: strategy_research_agent
+      owner: human_operator
+    reviewed_by:
+      - strategy_review_agent
+      - risk_review_agent
+    approved_by: ""
+    scope:
+      instruments:
+        - BTC-USDT-SWAP
+      timeframe: 1H
+      market_regime:
+        - trend
+    thesis: 顺趋势等待回踩确认后开仓，避免在无结构位置追价。
+    trigger:
+      summary: 价格回到主趋势方向的关键支撑/阻力区，并得到成交与 OI 配合确认。
+    invalidation:
+      summary: 关键结构破坏，或成交/OI 反馈与主方向不一致。
+    sizing:
+      max_notional_usdt: 3000
+      leverage_cap: 2
+      max_add_count: 1
+    risk:
+      stop_loss_required: true
+      max_signal_age_secs: 120
+      max_price_drift_bps: 15
+    exits:
+      take_profit_mode: partial_then_trail
+      force_flat_before: ""
+    notes:
+      - 新策略默认从 draft 开始。
+      - 未经人工批准，不可切换到 armed。
+
+  - id: eth_15m_reversal_probe_v1
+    version: 1
+    name: ETH 15m 反转试探
+    status: review
+    execution_mode: advisory
+    produced_by:
+      type: human
+      source: manual_design
+      owner: human_operator
+    reviewed_by:
+      - risk_review_agent
+    approved_by: ""
+    scope:
+      instruments:
+        - ETH-USDT-SWAP
+      timeframe: 15m
+      market_regime:
+        - range
+    thesis: 在明确区间边缘进行轻仓反转试探，失败则快速止损。
+    trigger:
+      summary: 区间边缘出现拒绝信号，且市场并未进入单边趋势扩张。
+    invalidation:
+      summary: 区间失效或波动扩张导致策略假设不成立。
+    sizing:
+      max_notional_usdt: 1500
+      leverage_cap: 2
+      max_add_count: 0
+    risk:
+      stop_loss_required: true
+      max_signal_age_secs: 60
+      max_price_drift_bps: 10
+    exits:
+      take_profit_mode: fixed_rr
+      force_flat_before: ""

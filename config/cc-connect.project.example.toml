@@ -1,0 +1,22 @@
+attachment_send = "on"
+
+[[projects]]
+name = "okx_trader_agent"
+disabled_commands = ["shell", "dir", "restart", "upgrade", "config"]
+
+[projects.agent]
+type = "codex"
+
+[projects.agent.options]
+mode = "yolo"
+work_dir = "/Users/shengdiyage000/project/auto_trade_workspace_for_codex"
+
+[[projects.platforms]]
+type = "feishu"
+
+[projects.platforms.options]
+app_id = "cli_xxx"
+app_secret = "sec_xxx"
+allow_from = "ou_xxx"
+thread_isolation = true
+enable_feishu_card = true

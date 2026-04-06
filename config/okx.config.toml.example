@@ -1,0 +1,20 @@
+# 这是本地 OKX Agent Trade Kit 的样例配置。
+# 建议实际文件放在 ~/.okx/config.toml，不要把真实凭证提交到仓库。
+
+default_profile = "demo"
+
+[profiles.demo]
+api_key = "your-demo-api-key"
+secret_key = "your-demo-secret-key"
+passphrase = "your-demo-passphrase"
+demo = true
+site = "global"
+
+[profiles.live]
+api_key = "your-live-api-key"
+secret_key = "your-live-secret-key"
+passphrase = "your-live-passphrase"
+site = "global"
+
+# 如需代理，可在 profile 下补充：
+# proxy_url = "http://proxy.example.com:8080"

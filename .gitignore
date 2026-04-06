@@ -1,0 +1,15 @@
+config/okx.env
+config/risk-limits.yaml
+.env
+.DS_Store
+state/**
+!state/journals/
+!state/events/
+!state/reports/
+!state/snapshots/
+!state/artifacts/
+!state/journals/.gitkeep
+!state/events/.gitkeep
+!state/reports/.gitkeep
+!state/snapshots/.gitkeep
+!state/artifacts/.gitkeep

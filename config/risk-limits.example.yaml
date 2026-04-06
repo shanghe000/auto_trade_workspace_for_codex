@@ -1,0 +1,45 @@
+# 在任何真实交易前，把这个文件复制为 config/risk-limits.yaml。
+# 下面所有数值都只是样例，必须按你的真实账户重新确认。
+
+live_trading:
+  enabled: false
+  require_human_ack: true
+  kill_switch: false
+
+operation:
+  mode: manual_confirm
+  allow_ai_strategy_activation: false
+  require_pretrade_revalidation: true
+
+instruments:
+  whitelist:
+    - BTC-USDT-SWAP
+    - ETH-USDT-SWAP
+
+account:
+  margin_mode: isolated
+  max_total_notional_usdt: 20000
+  max_open_positions: 2
+
+position_limits:
+  BTC-USDT-SWAP:
+    max_position_notional_usdt: 10000
+    max_leverage: 3
+  ETH-USDT-SWAP:
+    max_position_notional_usdt: 6000
+    max_leverage: 3
+
+risk:
+  max_risk_per_trade_pct: 0.5
+  max_daily_drawdown_pct: 2.0
+  min_liquidation_buffer_pct: 10.0
+  require_stop_loss: true
+  allow_hedged_book: false
+  max_orders_per_5m: 6
+
+data_quality:
+  max_market_data_staleness_secs: 15
+  max_account_snapshot_staleness_secs: 15
+  block_if_ws_disconnected: true
+  block_if_unreconciled_orders: true
+  max_clock_drift_ms: 1500
