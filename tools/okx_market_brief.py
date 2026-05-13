@@ -94,6 +94,16 @@ class InstrumentBrief:
     funding_bps: Optional[Decimal]
     oi_usd: Optional[Decimal]
     last_closed_change_pct: Optional[Decimal]
+    last_closed_volume: Optional[Decimal]
+    last_closed_volume_change_pct: Optional[Decimal]
+    book_levels: int
+    book_bid_depth_total: Optional[Decimal]
+    book_ask_depth_total: Optional[Decimal]
+    book_ask_to_bid_ratio: Optional[Decimal]
+    top_bid_wall_price: Optional[str]
+    top_bid_wall_size: Optional[Decimal]
+    top_ask_wall_price: Optional[str]
+    top_ask_wall_size: Optional[Decimal]
     buy_trade_count: int
     sell_trade_count: int
     view_tags: List[str]
@@ -113,11 +123,39 @@ def first_closed_pair(candles: List[Dict[str, Any]]) -> Tuple[Optional[Dict[str,
     return None, None
 
 
+def sum_book_sizes(levels: List[Dict[str, Any]]) -> Optional[Decimal]:
+    total = Decimal("0")
+    found = False
+    for level in levels:
+        size = dec(level.get("size"))
+        if size is None:
+            continue
+        total += size
+        found = True
+    return total if found else None
+
+
+def largest_book_level(levels: List[Dict[str, Any]]) -> Tuple[Optional[str], Optional[Decimal]]:
+    top_price: Optional[str] = None
+    top_size: Optional[Decimal] = None
+    for level in levels:
+        size = dec(level.get("size"))
+        if size is None:
+            continue
+        if top_size is None or size > top_size:
+            top_size = size
+            price = level.get("price")
+            top_price = str(price) if price not in (None, "") else None
+    return top_price, top_size
+
+
 def build_tags(
     change_24h_pct: Optional[Decimal],
     range_position_pct: Optional[Decimal],
     funding_bps: Optional[Decimal],
     last_closed_change_pct: Optional[Decimal],
+    last_closed_volume_change_pct: Optional[Decimal],
+    book_ask_to_bid_ratio: Optional[Decimal],
     buy_trade_count: int,
     sell_trade_count: int,
 ) -> List[str]:
@@ -155,6 +193,22 @@ def build_tags(
         else:
             tags.append("最近一根收盘震荡")
 
+    if last_closed_volume_change_pct is not None:
+        if last_closed_volume_change_pct >= Decimal("20"):
+            tags.append("最近量能放大")
+        elif last_closed_volume_change_pct <= Decimal("-20"):
+            tags.append("最近量能回落")
+        else:
+            tags.append("最近量能平稳")
+
+    if book_ask_to_bid_ratio is not None:
+        if book_ask_to_bid_ratio >= Decimal("1.2"):
+            tags.append("近场卖盘更厚")
+        elif book_ask_to_bid_ratio <= Decimal("0.8"):
+            tags.append("近场买盘更厚")
+        else:
+            tags.append("近场挂单均衡")
+
     trade_delta = buy_trade_count - sell_trade_count
     if trade_delta >= 4:
         tags.append("最近成交偏买方")
@@ -182,6 +236,19 @@ def summarize_instrument(item: Dict[str, Any]) -> InstrumentBrief:
     funding_rate = dec(funding.get("funding_rate"))
     funding_bps = funding_rate * Decimal("10000") if funding_rate is not None else None
     oi_usd = dec(open_interest.get("open_interest_usd"))
+    bids = order_book.get("bids") or []
+    asks = order_book.get("asks") or []
+    book_levels = int(order_book.get("depth") or 0)
+    book_bid_depth_total = sum_book_sizes(bids)
+    book_ask_depth_total = sum_book_sizes(asks)
+    book_ask_to_bid_ratio = (
+        book_ask_depth_total / book_bid_depth_total
+        if book_ask_depth_total is not None
+        and book_bid_depth_total not in (None, Decimal("0"))
+        else None
+    )
+    top_bid_wall_price, top_bid_wall_size = largest_book_level(bids)
+    top_ask_wall_price, top_ask_wall_size = largest_book_level(asks)
 
     change_24h_pct = None
     if last not in (None, Decimal("0")) and open_24h not in (None, Decimal("0")):
@@ -198,11 +265,18 @@ def summarize_instrument(item: Dict[str, Any]) -> InstrumentBrief:
 
     latest_closed, prev_closed = first_closed_pair(candles)
     last_closed_change_pct = None
+    last_closed_volume = dec(latest_closed.get("vol")) if latest_closed else None
+    prev_closed_volume = dec(prev_closed.get("vol")) if prev_closed else None
+    last_closed_volume_change_pct = None
     if latest_closed and prev_closed:
         latest_close = dec(latest_closed.get("close"))
         prev_close = dec(prev_closed.get("close"))
         if latest_close is not None and prev_close not in (None, Decimal("0")):
             last_closed_change_pct = (latest_close / prev_close - Decimal("1")) * Decimal("100")
+        if last_closed_volume is not None and prev_closed_volume not in (None, Decimal("0")):
+            last_closed_volume_change_pct = (
+                (last_closed_volume / prev_closed_volume) - Decimal("1")
+            ) * Decimal("100")
 
     buy_trade_count = 0
     sell_trade_count = 0
@@ -218,6 +292,8 @@ def summarize_instrument(item: Dict[str, Any]) -> InstrumentBrief:
         range_position_pct=range_position_pct,
         funding_bps=funding_bps,
         last_closed_change_pct=last_closed_change_pct,
+        last_closed_volume_change_pct=last_closed_volume_change_pct,
+        book_ask_to_bid_ratio=book_ask_to_bid_ratio,
         buy_trade_count=buy_trade_count,
         sell_trade_count=sell_trade_count,
     )
@@ -231,6 +307,16 @@ def summarize_instrument(item: Dict[str, Any]) -> InstrumentBrief:
         funding_bps=funding_bps,
         oi_usd=oi_usd,
         last_closed_change_pct=last_closed_change_pct,
+        last_closed_volume=last_closed_volume,
+        last_closed_volume_change_pct=last_closed_volume_change_pct,
+        book_levels=book_levels,
+        book_bid_depth_total=book_bid_depth_total,
+        book_ask_depth_total=book_ask_depth_total,
+        book_ask_to_bid_ratio=book_ask_to_bid_ratio,
+        top_bid_wall_price=top_bid_wall_price,
+        top_bid_wall_size=top_bid_wall_size,
+        top_ask_wall_price=top_ask_wall_price,
+        top_ask_wall_size=top_ask_wall_size,
         buy_trade_count=buy_trade_count,
         sell_trade_count=sell_trade_count,
         view_tags=tags,
@@ -286,11 +372,24 @@ def render_report(snapshot: Dict[str, Any], max_staleness_secs: int) -> str:
         lines.append(f"## {brief.inst_id}")
         lines.append("")
         lines.append(
-            f"- 24h 位置: `{fmt_pct(brief.range_position_pct, 2)}`，最近一根已收 K 线涨跌: `{fmt_pct(brief.last_closed_change_pct, 2)}`。"
+            f"- K 线: 24h 位置 `{fmt_pct(brief.range_position_pct, 2)}`，最近一根已收 K 线涨跌 `{fmt_pct(brief.last_closed_change_pct, 2)}`。"
+        )
+        lines.append(
+            f"- 成交量: 最近一根已收 K 线成交量 `{fmt_decimal(brief.last_closed_volume, 2)}`，相对上一根 `{fmt_pct(brief.last_closed_volume_change_pct, 2)}`。"
+        )
+        lines.append(
+            f"- OI: 当前未平仓名义价值 `{fmt_int_like(brief.oi_usd)} USD`，资金费率 `{fmt_bps(brief.funding_bps, 3)}`。"
+        )
+        lines.append(
+            f"- 挂单: 近 `{brief.book_levels}` 档 bid `{fmt_decimal(brief.book_bid_depth_total, 2)}` / ask `{fmt_decimal(brief.book_ask_depth_total, 2)}`，"
+            f"ask/bid `{fmt_decimal(brief.book_ask_to_bid_ratio, 3)}`；"
+            f"最大买墙 `{brief.top_bid_wall_price or 'n/a'} @ {fmt_decimal(brief.top_bid_wall_size, 2)}`，"
+            f"最大卖墙 `{brief.top_ask_wall_price or 'n/a'} @ {fmt_decimal(brief.top_ask_wall_size, 2)}`。"
         )
         lines.append(
             f"- 最近成交方向: `buy {brief.buy_trade_count} / sell {brief.sell_trade_count}`。"
         )
+        lines.append("- 分析约束: `正式分析必须联合 K线 / 成交量 / OI / 挂单，不单独依据 K 线。`")
         lines.append(f"- 观察标签: `{' | '.join(brief.view_tags)}`")
         lines.append("")
 

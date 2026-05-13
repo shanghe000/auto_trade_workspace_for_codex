@@ -18,7 +18,7 @@ type = "codex"
 
 [projects.agent.options]
 mode = "yolo"
-work_dir = "/Users/shengdiyage000/project/auto_trade_workspace_for_codex"
+work_dir = "/path/to/auto_trade_workspace_for_codex"
 
 [[projects.platforms]]
 type = "feishu"
