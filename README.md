@@ -1,5 +1,7 @@
 # auto_trade_workspace_for_codex
 
+![Project cover — xuan jing](docs/images/cover.svg)
+
 这是一个独立的交易工作空间仓库，用来承载：
 
 - Codex 在该仓库下扮演 BTC / ETH 永续交易主控操作员
